@@ -1,11 +1,13 @@
 using Microsoft.Extensions.Options;
 using OrbitBackup.Services;
+using Serilog;
 
 namespace OrbitBackup.Strategies;
 
 public class LocalBackupStrategy(IOptions<BackupOptions> options) : IBackupStrategy
 {
     private DirectoryInfo? destinationDirectory;
+
     public DateTime BackupTime { get; set; }
 
     public void BeforeBackup()
@@ -18,6 +20,7 @@ public class LocalBackupStrategy(IOptions<BackupOptions> options) : IBackupStrat
         string backupDestinationName = $"{BackupTime.ToString(options.Value.DestinationBackupFormat)}";
         string backupDestinationPath = Path.Combine(options.Value.DestinationDirectory, backupDestinationName);
         destinationDirectory = Directory.CreateDirectory(backupDestinationPath);
+        Log.Information("Destination directory for local backup: {DestinationDirectory}", destinationDirectory.FullName);
     }
 
     public void Backup()
@@ -35,11 +38,14 @@ public class LocalBackupStrategy(IOptions<BackupOptions> options) : IBackupStrat
             return;
         }
 
+        Log.Information("Backing up {NumberOfSourceDirectories} source directorie(s)...", options.Value.SourceDirectories.Length);
+
         foreach (string sourceDirectory in options.Value.SourceDirectories)
         {
             string sourceDirectoryName = new DirectoryInfo(sourceDirectory).Name;
             string destinationDirectoryPath = Path.Combine(destinationDirectory.FullName, sourceDirectoryName);
             Directory.CreateDirectory(destinationDirectoryPath);
+            Log.Information("{SourceDirectory} -> {DestinationDirectory}", sourceDirectory, destinationDirectoryPath);
 
             foreach (string file in Directory.GetFiles(sourceDirectory))
             {
@@ -59,11 +65,14 @@ public class LocalBackupStrategy(IOptions<BackupOptions> options) : IBackupStrat
             return;
         }
 
+        Log.Information("Backing up {NumberOfSourceFiles} source file(s)...", options.Value.SourceFiles.Length);
+
         foreach (string sourceFile in options.Value.SourceFiles)
         {
             string fileName = Path.GetFileName(sourceFile);
             string destinationFilePath = Path.Combine(destinationDirectory.FullName, fileName);
             File.Copy(sourceFile, destinationFilePath);
+            Log.Information("{SourceFile} -> {DestinationFile}", sourceFile, destinationFilePath);
         }
     }
 
@@ -83,6 +92,10 @@ public class LocalBackupStrategy(IOptions<BackupOptions> options) : IBackupStrat
         var directoriesToDelete = directories
             .OrderByDescending(d => d.CreationTime)
             .Skip(options.Value.MaxBackupCount);
+
+        Log.Information("Amount of backup directories: {AmountOfBackups}", directories.Length);
+        Log.Information("Max backup count: {MaxAmountOfBackups}", options.Value.MaxBackupCount);
+        Log.Information("Removing {NumberOfBackupsToRemove} exceeding backup directories...", directoriesToDelete.Count());
 
         foreach (var directory in directories)
         {
