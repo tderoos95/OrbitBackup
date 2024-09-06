@@ -8,11 +8,19 @@ public static class StrategyFactory
 {
     public static IBackupStrategy Create(IOptions<BackupOptions> options)
     {
-        IBackupStrategy strategy = new LocalBackupStrategy(options);
+        var backupTime = DateTime.Now;
+
+        IBackupStrategy strategy = new LocalBackupStrategy(options)
+        {
+            BackupTime = backupTime
+        };
 
         if (options.Value.EnableCompression)
         {
-            strategy = new ZipBackupStrategy(options, strategy);
+            strategy = new ZipBackupStrategy(options, strategy)
+            {
+                BackupTime = backupTime
+            };
         }
 
         return strategy;
