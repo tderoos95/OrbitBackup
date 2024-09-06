@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using OrbitBackup.Services;
 using OrbitBackup.Strategies;
+using Serilog;
 
 namespace OrbitBackup.Factories;
 
@@ -22,6 +23,8 @@ public static class StrategyFactory
                 BackupTime = backupTime
             };
         }
+
+        Log.Information("Backup strategy: {BackupStrategy}", strategy.GetType().Name);
 
         return strategy;
     }

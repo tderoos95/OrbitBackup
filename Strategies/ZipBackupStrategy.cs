@@ -1,12 +1,14 @@
 using System.IO.Compression;
 using Microsoft.Extensions.Options;
 using OrbitBackup.Services;
+using Serilog;
 
 namespace OrbitBackup.Strategies;
 
 public class ZipBackupStrategy(IOptions<BackupOptions> options, IBackupStrategy innerStrategy) : IBackupStrategy
 {
     private DirectoryInfo? destinationDirectory;
+
     public DateTime BackupTime { get; set; }
 
     public void BeforeBackup()
@@ -47,9 +49,11 @@ public class ZipBackupStrategy(IOptions<BackupOptions> options, IBackupStrategy 
         string zipFileName = $"{destinationDirectory.Name}.zip";
         string zipFilePath = Path.Combine(destinationDirectory.Parent.FullName, zipFileName);
 
+        Log.Information("{DestinationDirectory} -> {ZipFilePath}", destinationDirectory.FullName, zipFilePath);
         ZipFile.CreateFromDirectory(destinationDirectory.FullName, zipFilePath);
 
         // Delete the original backup
+        Log.Information("Deleting directory {DestinationDirectory}...", destinationDirectory.FullName);
         destinationDirectory.Delete(true);
     }
 
@@ -68,9 +72,14 @@ public class ZipBackupStrategy(IOptions<BackupOptions> options, IBackupStrategy 
             .OrderByDescending(f => f.CreationTime)
             .Skip(options.Value.MaxBackupCount);
 
+        Log.Information("Amount of backups: {AmountOfBackups}", backups.Length);
+        Log.Information("Max backup count: {MaxAmountOfBackups}", options.Value.MaxBackupCount);
+        Log.Information("Removing {NumberOfBackupsToRemove} exceeding zip backup(s)...", backupsToRemove.Count());
+
         foreach (var backup in backupsToRemove)
         {
             backup.Delete();
+            Log.Information("Deleted {Backup}", backup.FullName);
         }
     }
 }
