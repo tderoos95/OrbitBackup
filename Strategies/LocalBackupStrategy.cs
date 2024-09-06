@@ -6,6 +6,7 @@ namespace OrbitBackup.Strategies;
 public class LocalBackupStrategy(IOptions<BackupOptions> options) : IBackupStrategy
 {
     private DirectoryInfo? destinationDirectory;
+    public DateTime BackupTime { get; set; }
 
     public void BeforeBackup()
     {
@@ -14,7 +15,7 @@ public class LocalBackupStrategy(IOptions<BackupOptions> options) : IBackupStrat
 
     private void EnsureDestinationExists()
     {
-        string backupDestinationName = $"{DateTime.Now.ToString(options.Value.DestinationBackupFormat)}";
+        string backupDestinationName = $"{BackupTime.ToString(options.Value.DestinationBackupFormat)}";
         string backupDestinationPath = Path.Combine(options.Value.DestinationDirectory, backupDestinationName);
         destinationDirectory = Directory.CreateDirectory(backupDestinationPath);
     }
@@ -68,4 +69,24 @@ public class LocalBackupStrategy(IOptions<BackupOptions> options) : IBackupStrat
 
     public void AfterBackup()
     { }
+
+    public void RemoveExceedingBackups()
+    {
+        ArgumentNullException.ThrowIfNull(destinationDirectory?.Parent);
+
+        var directories = destinationDirectory.Parent.GetDirectories();
+        if (directories.Length <= options.Value.MaxBackupCount)
+        {
+            return;
+        }
+
+        var directoriesToDelete = directories
+            .OrderByDescending(d => d.CreationTime)
+            .Skip(options.Value.MaxBackupCount);
+
+        foreach (var directory in directories)
+        {
+            directory.Delete();
+        }
+    }
 }

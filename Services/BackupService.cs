@@ -16,9 +16,10 @@ public class BackupService(IOptions<BackupOptions> settings) : IBackupService
     public void Backup()
     {
         EnsureDestinationExists();
-        
+
         strategy.BeforeBackup();
         strategy.Backup();
         strategy.AfterBackup();
+        strategy.RemoveExceedingBackups();
     }
 }
